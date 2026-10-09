@@ -290,7 +290,24 @@ void reparent(struct proc *p) {
     }
   }
 }
-
+//modify begin
+static char * state_name(enum procstate state){
+  switch (state) {
+  case UNUSED:
+    return "unused";
+  case SLEEPING:
+    return "sleep";
+  case RUNNABLE:
+    return "runble";
+  case RUNNING:
+    return "run";
+  case ZOMBIE:
+    return "zombie";
+  default:
+    return "unknown";
+  }
+}
+//modify end
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().
@@ -337,7 +354,25 @@ void exit(int status) {
   acquire(&original_parent->lock);
 
   acquire(&p->lock);
-
+  //modify begin
+  printf("[INFO] proc %d exit, parent pid %d, name %s, state %s\n",
+      p->pid,
+      original_parent->pid,
+      original_parent->name,
+      state_name(original_parent->state));
+  int child_num = 0;
+  for(struct proc *child = proc;child < &proc[NPROC];child++){ //遍历全局进程表
+    if(child->parent == p){
+      printf("[INFO] proc %d exit, child %d, pid %d, name %s, state %s\n",
+           p->pid,
+           child_num,
+           child->pid,
+           child->name,
+           state_name(child->state));
+      child_num++;
+    }
+  }
+  //modify end
   // Give any children to init.
   reparent(p);
 
