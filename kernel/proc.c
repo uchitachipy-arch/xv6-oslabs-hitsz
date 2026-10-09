@@ -355,15 +355,16 @@ void exit(int status) {
 
   acquire(&p->lock);
   //modify begin
-  printf("[INFO] proc %d exit, parent pid %d, name %s, state %s\n",
+  exit_info("proc %d exit, parent pid %d, name %s, state %s\n",
       p->pid,
       original_parent->pid,
       original_parent->name,
       state_name(original_parent->state));
   int child_num = 0;
   for(struct proc *child = proc;child < &proc[NPROC];child++){ //遍历全局进程表
+    //acquire(&child->lock);
     if(child->parent == p){
-      printf("[INFO] proc %d exit, child %d, pid %d, name %s, state %s\n",
+      exit_info("proc %d exit, child %d, pid %d, name %s, state %s\n",
            p->pid,
            child_num,
            child->pid,
@@ -371,6 +372,7 @@ void exit(int status) {
            state_name(child->state));
       child_num++;
     }
+    //release(&child->lock);
   }
   //modify end
   // Give any children to init.

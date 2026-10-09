@@ -83,3 +83,36 @@ uint64 sys_rename(void) {
   p->name[len] = '\0';
   return 0;
 }
+
+//modify begin
+//modify end
+extern struct proc proc[NPROC];
+uint64 sys_yield(void) {
+  struct proc *p = myproc();
+
+  printf("Save the context of the process to the memory region from address %p to %p\n",
+    (uint64)&p->context,(uint64)(&p->context +1));
+
+  printf("Current running process pid is %d and user pc is %p\n",
+    p->pid, (uint64)p->trapframe->epc);
+
+  int start = p-proc;
+  int next_pid=-1;
+  uint64 next_pc=0;
+  for(int i=1;i<NPROC;i++){
+    int idx = (start+i)%NPROC;
+    struct proc *np = &proc[idx];
+    acquire(&np->lock);
+    if(np->state == RUNNABLE){
+      next_pid = np->pid;
+      next_pc = np->trapframe->epc;
+      release(&np->lock);
+      break;
+    }
+    release(&np->lock);
+  }
+  printf("Next runnable process pid is %d and user pc is %p\n",
+    next_pid,next_pc);
+  yield();
+  return 0;
+}
