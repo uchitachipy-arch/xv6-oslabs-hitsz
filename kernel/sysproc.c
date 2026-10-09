@@ -116,3 +116,44 @@ uint64 sys_yield(void) {
   yield();
   return 0;
 }
+
+uint64 sys_seccomp_ctl(void){
+  int op;
+  uint64 arg;
+  struct proc *p = myproc();
+
+  argint(0,&op);
+  argaddr(1,&arg);
+  if(op==0){
+    p->seccomp_mask = arg;
+    return 0;
+  }else if(op == 1){
+    if(arg>0x7fffffffUL) return -1;
+    p->max_children = (int) arg;
+    return 0;
+  }
+  return -1;
+}
+
+uint64 sys_seccomp_getlog(void){
+  uint64 buf_addr;
+  uint64 len_addr;
+  int len;
+  struct proc *p = myproc();
+  argaddr(0,&buf_addr);
+  argaddr(1,&len_addr);
+
+  if(copyin(p->pagetable,(char *)&len,len_addr,sizeof(len))<0)
+    return -1;
+  
+  if(len < 0) return -1;
+  if(len > p->seccomp_log_count)
+    len = p->seccomp_log_count;
+
+  if(len>0 && copyout(p->pagetable,buf_addr,(char *)p->seccomp_log,len*sizeof(uint64))<0)
+    return -1;
+  if(copyout(p->pagetable,len_addr,(char *)&len,sizeof(len))<0)
+    return -1;
+
+  return 0;
+}

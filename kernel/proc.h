@@ -103,4 +103,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  uint64 seccomp_mask;
+  uint64 seccomp_log[32];
+  int seccomp_log_count;
+
+  int child_count;
+  int max_children;
+  int counted_child;
 };

@@ -96,6 +96,12 @@ static struct proc *allocproc(void) {
 
 found:
   p->pid = allocpid();
+  p->seccomp_mask = ~0UL;
+  p->seccomp_log_count = 0;
+  memset(p->seccomp_log,0,sizeof(p->seccomp_log));
+  p->child_count = 0;
+  p->max_children = NPROC;
+  p->counted_child = 0;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0) {
@@ -230,6 +236,7 @@ int fork(void) {
   struct proc *np;
   struct proc *p = myproc();
 
+  if(p->child_count >= p->max_children) return -1;
   // Allocate process.
   if ((np = allocproc()) == 0) {
     return -1;
@@ -244,7 +251,11 @@ int fork(void) {
   np->sz = p->sz;
 
   np->parent = p;
+  np->seccomp_mask = p->seccomp_mask;
 
+  np->max_children = p->max_children;
+  np->counted_child = 1;
+  
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
@@ -260,6 +271,7 @@ int fork(void) {
 
   pid = np->pid;
 
+  p->child_count ++;
   np->state = RUNNABLE;
 
   release(&np->lock);
@@ -282,6 +294,8 @@ void reparent(struct proc *p) {
       // because only the parent changes it, and we're the parent.
       acquire(&pp->lock);
       pp->parent = initproc;
+      if(pp->counted_child) p->child_count--;
+      pp->counted_child = 0;
       // we should wake up init here, but that would require
       // initproc->lock, which would be a deadlock, since we hold
       // the lock on one of init's children (pp). this is why
@@ -422,6 +436,8 @@ int wait(uint64 addr,int flag) {
             release(&p->lock);
             return -1;
           }
+          if(np->counted_child)
+            p->child_count--;
           freeproc(np);
           release(&np->lock);
           release(&p->lock);
